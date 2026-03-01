@@ -49,7 +49,10 @@ export async function updateTaskStatus(taskId: string, newStatus: Status) {
   if (!task || task.userId !== userId) throw new Error('Not found')
 
   if (newStatus === Status.DONE && task.subTasks.some((s) => !s.done)) {
-    throw new Error('Complete all subtasks before marking done')
+    await prisma.subTask.updateMany({
+      where: { taskId, done: false },
+      data: { done: true },
+    })
   }
 
   const updated = await prisma.task.update({
