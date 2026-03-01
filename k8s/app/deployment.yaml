@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loop-app
+  namespace: loop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loop-app
+  template:
+    metadata:
+      labels:
+        app: loop-app
+    spec:
+      initContainers:
+        # Run migrations before the app starts
+        - name: migrate
+          image: loop-app:latest   # update with your registry/tag
+          command: ["npx", "prisma", "migrate", "deploy"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: loop-secrets
+                  key: DATABASE_URL
+      containers:
+        - name: loop-app
+          image: loop-app:latest   # update with your registry/tag
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: loop-secrets
+                  key: DATABASE_URL
+            - name: AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: loop-secrets
+                  key: AUTH_SECRET
+            - name: AUTH_URL
+              value: "https://CHANGE_ME"  # update with Tailscale Funnel hostname
+            - name: NODE_ENV
+              value: production
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10

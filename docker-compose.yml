@@ -1,0 +1,42 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://loop:loop@db:5432/loop
+      AUTH_SECRET: ${AUTH_SECRET:-dev-secret-do-not-use-in-production}
+      AUTH_URL: http://localhost:3000
+      NODE_ENV: development
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      db:
+        condition: service_healthy
+    # Pushes schema directly to DB (no migration files needed in dev), seeds, then starts dev server
+    # For production, use: npx prisma migrate deploy
+    command: sh -c "npx prisma db push --accept-data-loss && npx prisma db seed && npm run dev"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: loop
+      POSTGRES_PASSWORD: loop
+      POSTGRES_DB: loop
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loop"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:

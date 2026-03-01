@@ -1,0 +1,6 @@
+.next
+node_modules
+app/generated
+prisma/migrations
+public
+*.lock

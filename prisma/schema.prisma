@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  createdAt    DateTime   @default(now())
+  tasks        Task[]
+  categories   Category[]
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String   // hex color e.g. "#4f46e5"
+  createdAt DateTime @default(now())
+  tasks     Task[]
+
+  @@unique([userId, name])
+}
+
+model Task {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  title        String    // email subject / task description
+  recipient    String?   // who the email was sent to
+  priority     Priority  @default(MEDIUM)
+  status       Status    @default(WAITING)
+
+  sentDate     DateTime? // when the original email was sent
+  followUpDate DateTime? // scheduled date for the next follow-up
+  completedAt  DateTime? // when marked DONE
+
+  notes        String?
+  sortOrder    Int       @default(0) // for drag-to-reorder within Today view
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  followUps     FollowUp[]
+  statusHistory StatusEvent[]
+}
+
+// One row per actual follow-up attempt made by the assistant
+model FollowUp {
+  id           String   @id @default(cuid())
+  taskId       String
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  followedUpAt DateTime @default(now())
+  notes        String?
+}
+
+// Audit log — one row per status transition (powers time-to-complete metrics)
+model StatusEvent {
+  id         String   @id @default(cuid())
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fromStatus Status?
+  toStatus   Status
+  changedAt  DateTime @default(now())
+}
+
+enum Status {
+  WAITING
+  FOLLOW_UP_DUE
+  OVERDUE
+  DONE
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
