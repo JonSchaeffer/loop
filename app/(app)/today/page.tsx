@@ -28,9 +28,18 @@ export default async function TodayPage() {
     data: { status: Status.OVERDUE },
   })
 
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+
   const [tasks, categories] = await Promise.all([
     prisma.task.findMany({
-      where: { userId, status: { not: Status.DONE } },
+      where: {
+        userId,
+        OR: [
+          { status: { not: Status.DONE } },
+          { status: Status.DONE, completedAt: { gte: startOfToday } },
+        ],
+      },
       include: { category: true },
     }),
     prisma.category.findMany({

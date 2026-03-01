@@ -34,7 +34,7 @@ export function AddTaskSheet({ categories }: AddTaskSheetProps) {
     setForm((prev) => ({ ...prev, [field]: value }))
 
   const handleOpen = useCallback(() => {
-    setForm(EMPTY_FORM)
+    setForm({ ...EMPTY_FORM, sentDate: new Date().toISOString().split('T')[0] })
     setOpen(true)
   }, [])
 
@@ -46,6 +46,7 @@ export function AddTaskSheet({ categories }: AddTaskSheetProps) {
         !open &&
         !['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)
       ) {
+        e.preventDefault()
         handleOpen()
       }
     }
