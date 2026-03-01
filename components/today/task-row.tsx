@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { type Task, type Category, type SubTask, Status, Priority } from '@prisma/client'
 import { format, isPast } from 'date-fns'
 import { StatusActions } from './status-actions'
 import { EditTaskSheet } from './edit-task-sheet'
 import { SubTaskList } from './subtask-list'
 import { Button } from '@/components/ui/button'
+import { deleteTask } from '@/actions/tasks'
 
 type TaskWithDetails = Task & { category: Category | null; subTasks: SubTask[] }
 
@@ -30,6 +31,14 @@ interface TaskRowProps {
 
 export function TaskRow({ task, categories }: TaskRowProps) {
   const [editOpen, setEditOpen] = useState(false)
+  const [isDeleting, startDeleteTransition] = useTransition()
+
+  const handleDelete = () => {
+    if (!confirm('Delete this task?')) return
+    startDeleteTransition(async () => {
+      await deleteTask(task.id)
+    })
+  }
   const isOverdueDate =
     task.followUpDate && isPast(task.followUpDate) && task.status !== Status.DONE
 
@@ -89,16 +98,27 @@ export function TaskRow({ task, categories }: TaskRowProps) {
                 {task.category.name}
               </span>
             )}
+            <StatusActions taskId={task.id} currentStatus={task.status} />
             <Button
               size="sm"
               variant="ghost"
               onClick={() => setEditOpen(true)}
+              disabled={isDeleting}
               className="text-xs h-7 px-2 text-gray-400 hover:text-gray-700"
               title="Edit task"
             >
               ✎
             </Button>
-            <StatusActions taskId={task.id} currentStatus={task.status} />
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="text-xs h-7 px-2 text-gray-400 hover:text-red-500"
+              title="Delete task"
+            >
+              ✕
+            </Button>
           </div>
         </div>
       </div>

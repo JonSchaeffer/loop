@@ -29,12 +29,27 @@ export default async function TodayPage({
   const dayStart = startOfDay(viewDate)
   const dayEnd = endOfDay(viewDate)
 
-  // Only auto-mark overdue when viewing today
+  // Only auto-update statuses when viewing today
   if (viewingToday) {
+    const now = new Date()
+    const todayStart = startOfDay(now)
+    const todayEnd = endOfDay(now)
+
+    // followUpDate is today → FOLLOW_UP_DUE
     await prisma.task.updateMany({
       where: {
         userId,
-        followUpDate: { lt: new Date() },
+        followUpDate: { gte: todayStart, lte: todayEnd },
+        status: Status.WAITING,
+      },
+      data: { status: Status.FOLLOW_UP_DUE },
+    })
+
+    // followUpDate is in the past → OVERDUE
+    await prisma.task.updateMany({
+      where: {
+        userId,
+        followUpDate: { lt: todayStart },
         status: { in: [Status.WAITING, Status.FOLLOW_UP_DUE] },
       },
       data: { status: Status.OVERDUE },
