@@ -26,6 +26,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               >
                 Dashboard
               </Link>
+              <Link
+                href="/categories"
+                className="px-3 py-1.5 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Categories
+              </Link>
             </nav>
           </div>
           <form

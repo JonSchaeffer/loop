@@ -18,6 +18,7 @@ export async function createCategory(data: { name: string; color: string }) {
   })
 
   revalidatePath('/today')
+  revalidatePath('/categories')
   return category
 }
 
@@ -29,6 +30,7 @@ export async function updateCategory(id: string, data: { name?: string; color?: 
 
   const updated = await prisma.category.update({ where: { id }, data })
   revalidatePath('/today')
+  revalidatePath('/categories')
   return updated
 }
 
@@ -40,4 +42,5 @@ export async function deleteCategory(id: string) {
 
   await prisma.category.delete({ where: { id } })
   revalidatePath('/today')
+  revalidatePath('/categories')
 }
