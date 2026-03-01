@@ -1,0 +1,13 @@
+.git
+.next
+node_modules
+.env
+.env.local
+.env*.local
+playwright-report
+test-results
+k8s/app/secret.yaml
+idea.md
+plan.md
+README.md
+CLAUDE.md

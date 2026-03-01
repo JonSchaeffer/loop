@@ -6,7 +6,10 @@ FROM node:20-alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# prisma/schema.prisma must be present before npm ci — postinstall runs "prisma generate"
+COPY prisma ./prisma
+# HUSKY=0 prevents husky from running inside Docker (no .git directory)
+RUN HUSKY=0 npm ci
 
 # ---- dev stage: used by docker-compose for local development ----
 FROM base AS dev
