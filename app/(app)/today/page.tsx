@@ -67,7 +67,7 @@ export default async function TodayPage() {
         <AddTaskSheet categories={categories} />
       </div>
 
-      <TaskList tasks={sorted} />
+      <TaskList tasks={sorted} categories={categories} />
     </div>
   )
 }

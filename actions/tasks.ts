@@ -61,6 +61,34 @@ export async function updateTaskStatus(taskId: string, newStatus: Status) {
   return updated
 }
 
+export async function updateTask(
+  taskId: string,
+  data: {
+    title: string
+    recipient?: string
+    categoryId?: string
+    priority: Priority
+    sentDate?: Date | null
+    followUpDate?: Date | null
+    notes?: string
+  }
+) {
+  const userId = await requireUserId()
+
+  const task = await prisma.task.findUnique({ where: { id: taskId } })
+  if (!task || task.userId !== userId) throw new Error('Not found')
+
+  await prisma.task.update({
+    where: { id: taskId },
+    data: {
+      ...data,
+      categoryId: data.categoryId || null,
+    },
+  })
+
+  revalidatePath('/today')
+}
+
 export async function deleteTask(taskId: string) {
   const userId = await requireUserId()
 

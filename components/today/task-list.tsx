@@ -14,9 +14,10 @@ const STATUS_GROUP_ORDER: Status[] = [Status.OVERDUE, Status.FOLLOW_UP_DUE, Stat
 
 interface TaskListProps {
   tasks: TaskWithCategory[]
+  categories: Category[]
 }
 
-export function TaskList({ tasks }: TaskListProps) {
+export function TaskList({ tasks, categories }: TaskListProps) {
   const openTasks = tasks.filter((t) => t.status !== Status.DONE)
   const doneTasks = tasks.filter((t) => t.status === Status.DONE)
 
@@ -53,7 +54,7 @@ export function TaskList({ tasks }: TaskListProps) {
           </h2>
           <div className="space-y-2">
             {items.map((task) => (
-              <TaskRow key={task.id} task={task} />
+              <TaskRow key={task.id} task={task} categories={categories} />
             ))}
           </div>
         </section>
@@ -68,7 +69,7 @@ export function TaskList({ tasks }: TaskListProps) {
             </h2>
             <div className="space-y-2 opacity-50">
               {doneTasks.map((task) => (
-                <TaskRow key={task.id} task={task} />
+                <TaskRow key={task.id} task={task} categories={categories} />
               ))}
             </div>
           </div>
