@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { type Task, type Category, Priority } from '@prisma/client'
+import { type Task, type Category, type SubTask, Priority } from '@prisma/client'
 import { updateTask } from '@/actions/tasks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -9,12 +9,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { CategorySelect } from './category-select'
+import { SubTaskList } from './subtask-list'
 import { format } from 'date-fns'
 
-type TaskWithCategory = Task & { category: Category | null }
+type TaskWithDetails = Task & { category: Category | null; subTasks: SubTask[] }
 
 interface EditTaskSheetProps {
-  task: TaskWithCategory
+  task: TaskWithDetails
   categories: Category[]
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -27,6 +28,8 @@ function toDateInputValue(date: Date | null): string {
 
 export function EditTaskSheet({ task, categories, open, onOpenChange }: EditTaskSheetProps) {
   const [isPending, startTransition] = useTransition()
+
+  // Re-sync form when task prop changes (e.g. after a save)
   const [form, setForm] = useState({
     title: task.title,
     recipient: task.recipient ?? '',
@@ -146,6 +149,12 @@ export function EditTaskSheet({ task, categories, open, onOpenChange }: EditTask
               placeholder="Any context or details…"
               rows={3}
             />
+          </div>
+
+          {/* Subtasks */}
+          <div className="space-y-1.5">
+            <Label>Subtasks</Label>
+            <SubTaskList taskId={task.id} subTasks={task.subTasks} />
           </div>
 
           <div className="flex gap-2 pt-2">

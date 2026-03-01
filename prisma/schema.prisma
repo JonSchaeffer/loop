@@ -49,8 +49,19 @@ model Task {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  subTasks      SubTask[]
   followUps     FollowUp[]
   statusHistory StatusEvent[]
+}
+
+model SubTask {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title     String
+  done      Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 // One row per actual follow-up attempt made by the assistant

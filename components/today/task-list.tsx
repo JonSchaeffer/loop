@@ -1,7 +1,7 @@
-import { type Task, type Category, Status } from '@prisma/client'
+import { type Task, type Category, type SubTask, Status } from '@prisma/client'
 import { TaskRow } from './task-row'
 
-type TaskWithCategory = Task & { category: Category | null }
+type TaskWithDetails = Task & { category: Category | null; subTasks: SubTask[] }
 
 const STATUS_LABELS: Record<Status, string> = {
   OVERDUE: 'Overdue',
@@ -13,7 +13,7 @@ const STATUS_LABELS: Record<Status, string> = {
 const STATUS_GROUP_ORDER: Status[] = [Status.OVERDUE, Status.FOLLOW_UP_DUE, Status.WAITING]
 
 interface TaskListProps {
-  tasks: TaskWithCategory[]
+  tasks: TaskWithDetails[]
   categories: Category[]
 }
 

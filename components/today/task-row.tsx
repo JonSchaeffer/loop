@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { type Task, type Category, Status, Priority } from '@prisma/client'
+import { type Task, type Category, type SubTask, Status, Priority } from '@prisma/client'
 import { format, isPast } from 'date-fns'
 import { StatusActions } from './status-actions'
 import { EditTaskSheet } from './edit-task-sheet'
 import { Button } from '@/components/ui/button'
 
-type TaskWithCategory = Task & { category: Category | null }
+type TaskWithDetails = Task & { category: Category | null; subTasks: SubTask[] }
 
 const STATUS_STYLES: Record<Status, string> = {
   OVERDUE: 'border-l-red-400 bg-red-50',
@@ -23,7 +23,7 @@ const PRIORITY_DOT: Record<Priority, string> = {
 }
 
 interface TaskRowProps {
-  task: TaskWithCategory
+  task: TaskWithDetails
   categories: Category[]
 }
 
@@ -74,6 +74,11 @@ export function TaskRow({ task, categories }: TaskRowProps) {
 
               {task.notes && (
                 <p className="text-xs text-gray-400 mt-1 line-clamp-1">{task.notes}</p>
+              )}
+              {task.subTasks.length > 0 && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Subtasks: {task.subTasks.filter((s) => s.done).length}/{task.subTasks.length}
+                </p>
               )}
             </div>
           </div>

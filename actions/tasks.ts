@@ -42,8 +42,15 @@ export async function createTask(data: {
 export async function updateTaskStatus(taskId: string, newStatus: Status) {
   const userId = await requireUserId()
 
-  const task = await prisma.task.findUnique({ where: { id: taskId } })
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: { subTasks: true },
+  })
   if (!task || task.userId !== userId) throw new Error('Not found')
+
+  if (newStatus === Status.DONE && task.subTasks.some((s) => !s.done)) {
+    throw new Error('Complete all subtasks before marking done')
+  }
 
   const updated = await prisma.task.update({
     where: { id: taskId },

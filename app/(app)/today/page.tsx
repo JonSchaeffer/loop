@@ -40,7 +40,7 @@ export default async function TodayPage() {
           { status: Status.DONE, completedAt: { gte: startOfToday } },
         ],
       },
-      include: { category: true },
+      include: { category: true, subTasks: { orderBy: { sortOrder: 'asc' } } },
     }),
     prisma.category.findMany({
       where: { userId },
