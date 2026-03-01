@@ -245,9 +245,9 @@ enum Priority {
 - [x] Category badge on task card with inline category creation
 - [x] Priority dot indicator
 
-### Phase 3 — Task Management
+### Phase 3 — Task Management ✅
 
-- [ ] Edit existing tasks (slide-over pre-filled with current values)
+- [x] Edit existing tasks (slide-over pre-filled with current values)
 - [ ] Task detail view with follow-up log (log follow-up attempts with timestamp + notes)
 - [ ] Subtasks — simple checklist per task; task cannot be marked Done until all subtasks complete
 - [ ] Category color fills full task card background (light tint, replaces badge-only approach)
@@ -256,15 +256,15 @@ enum Priority {
 - [ ] Search bar (filters Today view by title, recipient, notes)
 - [ ] Filter bar (by category, priority, status)
 
-### Phase 4 — History & Dashboard
+### Phase 4 — History & Dashboard ✅
 
-- [ ] Left sidebar with date history — click a past date to view that day's task snapshot
-- [ ] Dashboard page with day/week/month filter
-- [ ] Task volume chart (created vs completed)
-- [ ] Status breakdown
-- [ ] Breakdown by category
-- [ ] Time-to-complete metric, viewable by category
-- [ ] Follow-up count distribution (tasks needing 1, 2, 3+ follow-ups)
+- [x] Left sidebar with date history — click a past date to view that day's task snapshot
+- [x] Dashboard page with day/week/month filter
+- [x] Task volume chart (created vs completed)
+- [x] Status breakdown
+- [x] Breakdown by category
+- [x] Time-to-complete metric, viewable by category
+- [x] Follow-up count distribution (tasks needing 1, 2, 3+ follow-ups)
 
 ### Phase 5 — Polish
 

@@ -35,9 +35,10 @@ const STATUS_GROUP_ORDER: Status[] = [Status.OVERDUE, Status.FOLLOW_UP_DUE, Stat
 interface TaskListProps {
   tasks: TaskWithDetails[]
   categories: Category[]
+  readonly?: boolean
 }
 
-export function TaskList({ tasks: initialTasks, categories }: TaskListProps) {
+export function TaskList({ tasks: initialTasks, categories, readonly = false }: TaskListProps) {
   const [tasks, setTasks] = useState(initialTasks)
 
   // Sync with server data after revalidatePath re-renders the parent
@@ -93,67 +94,73 @@ export function TaskList({ tasks: initialTasks, categories }: TaskListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Search + filters */}
-      <div className="flex flex-wrap gap-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search tasks…"
-          className="h-8 text-sm w-48"
-        />
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm"
-        >
-          <option value="">All categories</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={filterPriority}
-          onChange={(e) => setFilterPriority(e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm"
-        >
-          <option value="">All priorities</option>
-          {Object.entries(PRIORITY_LABELS).map(([val, label]) => (
-            <option key={val} value={val}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm"
-        >
-          <option value="">All statuses</option>
-          {STATUS_GROUP_ORDER.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABELS[s]}
-            </option>
-          ))}
-        </select>
-        {hasActiveFilter && (
-          <button
-            onClick={() => {
-              setSearch('')
-              setFilterCategory('')
-              setFilterPriority('')
-              setFilterStatus('')
-            }}
-            className="h-8 px-2 text-xs text-gray-400 hover:text-gray-700"
+      {/* Search + filters — hidden in readonly/historical view */}
+      {!readonly && (
+        <div className="flex flex-wrap gap-2">
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search tasks…"
+            className="h-8 text-sm w-48"
+          />
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm"
           >
-            Clear
-          </button>
-        )}
-      </div>
+            <option value="">All categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value)}
+            className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm"
+          >
+            <option value="">All priorities</option>
+            {Object.entries(PRIORITY_LABELS).map(([val, label]) => (
+              <option key={val} value={val}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="h-8 rounded-md border border-input bg-background px-2 text-sm shadow-sm"
+          >
+            <option value="">All statuses</option>
+            {STATUS_GROUP_ORDER.map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABELS[s]}
+              </option>
+            ))}
+          </select>
+          {hasActiveFilter && (
+            <button
+              onClick={() => {
+                setSearch('')
+                setFilterCategory('')
+                setFilterPriority('')
+                setFilterStatus('')
+              }}
+              className="h-8 px-2 text-xs text-gray-400 hover:text-gray-700"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Task groups */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={readonly ? () => {} : handleDragEnd}
+      >
         <div className="space-y-6">
           {openTasks.length === 0 && doneTasks.length === 0 && (
             <div className="text-center py-16 text-gray-400">
