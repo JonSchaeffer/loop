@@ -20,11 +20,12 @@ export async function addSubTask(taskId: string, title: string) {
   const userId = await requireUserId()
   await requireTaskOwner(taskId, userId)
 
-  await prisma.subTask.create({
+  const subTask = await prisma.subTask.create({
     data: { taskId, title: title.trim() },
   })
 
   revalidatePath('/today')
+  return subTask
 }
 
 export async function toggleSubTask(subTaskId: string) {

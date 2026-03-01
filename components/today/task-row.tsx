@@ -5,6 +5,7 @@ import { type Task, type Category, type SubTask, Status, Priority } from '@prism
 import { format, isPast } from 'date-fns'
 import { StatusActions } from './status-actions'
 import { EditTaskSheet } from './edit-task-sheet'
+import { SubTaskList } from './subtask-list'
 import { Button } from '@/components/ui/button'
 
 type TaskWithDetails = Task & { category: Category | null; subTasks: SubTask[] }
@@ -75,11 +76,7 @@ export function TaskRow({ task, categories }: TaskRowProps) {
               {task.notes && (
                 <p className="text-xs text-gray-400 mt-1 line-clamp-1">{task.notes}</p>
               )}
-              {task.subTasks.length > 0 && (
-                <p className="text-xs text-gray-400 mt-1">
-                  Subtasks: {task.subTasks.filter((s) => s.done).length}/{task.subTasks.length}
-                </p>
-              )}
+              <SubTaskList taskId={task.id} subTasks={task.subTasks} compact />
             </div>
           </div>
 
