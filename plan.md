@@ -228,29 +228,37 @@ enum Priority {
 - [x] Configure ESLint, Prettier, Husky + lint-staged, TypeScript strict mode
 - [x] Set up Vitest + React Testing Library
 - [x] Set up Playwright for E2E
-- [x] Set up Prisma + PostgreSQL schema (using `prisma-client-js` generator — new Prisma 6 local generator dropped due to TypeScript module resolution issues)
-- [x] Auth.js email+password login (JWT sessions, no DB adapter needed)
+- [x] Set up Prisma + PostgreSQL schema (Prisma 7, `prisma-client-js` + `@prisma/adapter-pg`)
+- [x] Auth.js email+password login (JWT sessions, edge-safe middleware split)
 - [x] Docker Compose stack (next-app + postgres, hot reload via volume mount) for local dev
 - [x] Basic k8s manifests (next-app deployment, postgres statefulset, PVC, services)
 - [ ] Tailscale Funnel config (deferred — do when ready to deploy)
 
-### Phase 2 — Core Task UI
+### Phase 2 — Core Task UI ✅
 
-- [ ] Today view (list of active tasks)
-- [ ] Quick-add task modal
-- [ ] Status transition buttons (one-click)
-- [ ] Auto-rollover logic (tasks without `completedAt` surface in Today view regardless of date)
+- [x] Today view — tasks grouped by status (Overdue → Follow-up Due → Waiting)
+- [x] Completed tasks from today shown at bottom, dimmed, separated by divider
+- [x] Quick-add task slide-over (`N` keyboard shortcut, `sentDate` auto-fills to today)
+- [x] Status transition buttons (one-click, client-side with `useTransition`)
+- [x] Auto-rollover logic (non-DONE tasks always surface in Today view)
+- [x] Auto-overdue detection (on-load `updateMany` for tasks past `followUpDate`)
+- [x] Category badge on task card with inline category creation
+- [x] Priority dot indicator
 
 ### Phase 3 — Task Management
 
-- [ ] Drag-to-reorder (dnd-kit)
-- [ ] Priority flag display + filter
-- [ ] Task detail / edit view with follow-up log (add follow-up entry with timestamp + notes)
-- [ ] Overdue auto-detection (cron or on-load check: `followUpDate < now && status != DONE`)
-- [ ] Category management screen (CRUD categories with name + color picker)
+- [ ] Edit existing tasks (slide-over pre-filled with current values)
+- [ ] Task detail view with follow-up log (log follow-up attempts with timestamp + notes)
+- [ ] Subtasks — simple checklist per task; task cannot be marked Done until all subtasks complete
+- [ ] Category color fills full task card background (light tint, replaces badge-only approach)
+- [ ] Category management screen (edit name/color, delete — accessible from nav)
+- [ ] Drag-to-reorder within status groups (dnd-kit)
+- [ ] Search bar (filters Today view by title, recipient, notes)
+- [ ] Filter bar (by category, priority, status)
 
-### Phase 4 — Dashboard
+### Phase 4 — History & Dashboard
 
+- [ ] Left sidebar with date history — click a past date to view that day's task snapshot
 - [ ] Dashboard page with day/week/month filter
 - [ ] Task volume chart (created vs completed)
 - [ ] Status breakdown
@@ -260,10 +268,10 @@ enum Priority {
 
 ### Phase 5 — Polish
 
-- [ ] Keyboard shortcut (`N` = new task)
-- [ ] Confirm-on-close if unsaved changes
+- [ ] Confirm-on-close if unsaved changes in edit/add forms
 - [ ] Empty states, loading skeletons
 - [ ] Error handling / toast notifications
+- [ ] Keyboard shortcuts reference (e.g. `?` to show shortcuts)
 
 ---
 
