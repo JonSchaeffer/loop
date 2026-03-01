@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { type Task, type Category, type SubTask, Status, Priority } from '@prisma/client'
 import {
   DndContext,
@@ -39,6 +39,11 @@ interface TaskListProps {
 
 export function TaskList({ tasks: initialTasks, categories }: TaskListProps) {
   const [tasks, setTasks] = useState(initialTasks)
+
+  // Sync with server data after revalidatePath re-renders the parent
+  useEffect(() => {
+    setTasks(initialTasks)
+  }, [initialTasks])
   const [search, setSearch] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [filterPriority, setFilterPriority] = useState('')
