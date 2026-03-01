@@ -96,6 +96,23 @@ export async function updateTask(
   revalidatePath('/today')
 }
 
+export async function reorderTasks(orderedIds: string[]) {
+  const userId = await requireUserId()
+
+  // Verify all tasks belong to this user in one query
+  const tasks = await prisma.task.findMany({
+    where: { id: { in: orderedIds }, userId },
+    select: { id: true },
+  })
+  if (tasks.length !== orderedIds.length) throw new Error('Not found')
+
+  await prisma.$transaction(
+    orderedIds.map((id, index) => prisma.task.update({ where: { id }, data: { sortOrder: index } }))
+  )
+
+  revalidatePath('/today')
+}
+
 export async function deleteTask(taskId: string) {
   const userId = await requireUserId()
 

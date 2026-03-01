@@ -1,9 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { type Task, type Category, type SubTask, Status, Priority } from '@prisma/client'
-import { TaskRow } from './task-row'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { SortableTaskRow } from './sortable-task-row'
 import { Input } from '@/components/ui/input'
+import { reorderTasks } from '@/actions/tasks'
 
 type TaskWithDetails = Task & { category: Category | null; subTasks: SubTask[] }
 
@@ -27,11 +37,29 @@ interface TaskListProps {
   categories: Category[]
 }
 
-export function TaskList({ tasks, categories }: TaskListProps) {
+export function TaskList({ tasks: initialTasks, categories }: TaskListProps) {
+  const [tasks, setTasks] = useState(initialTasks)
   const [search, setSearch] = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const [filterPriority, setFilterPriority] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    setTasks((prev) => {
+      const oldIndex = prev.findIndex((t) => t.id === active.id)
+      const newIndex = prev.findIndex((t) => t.id === over.id)
+      const reordered = arrayMove(prev, oldIndex, newIndex)
+      // Persist only the open (non-DONE) order
+      const openIds = reordered.filter((t) => t.status !== Status.DONE).map((t) => t.id)
+      reorderTasks(openIds)
+      return reordered
+    })
+  }, [])
 
   const filtered = tasks.filter((t) => {
     if (search) {
@@ -120,56 +148,63 @@ export function TaskList({ tasks, categories }: TaskListProps) {
       </div>
 
       {/* Task groups */}
-      <div className="space-y-6">
-        {openTasks.length === 0 && doneTasks.length === 0 && (
-          <div className="text-center py-16 text-gray-400">
-            {hasActiveFilter ? (
-              <p className="text-sm">No tasks match your filters.</p>
-            ) : (
-              <>
-                <p className="text-lg font-medium">All clear!</p>
-                <p className="text-sm mt-1">
-                  No open tasks. Press N or click &ldquo;+ New Task&rdquo; to add one.
-                </p>
-              </>
-            )}
-          </div>
-        )}
-
-        {openTasks.length === 0 && doneTasks.length > 0 && (
-          <div className="text-center py-8 text-gray-400">
-            <p className="text-lg font-medium">All clear!</p>
-            <p className="text-sm mt-1">No open tasks.</p>
-          </div>
-        )}
-
-        {groups.map(({ status, label, items }) => (
-          <section key={status}>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-              {label} <span className="ml-1 text-gray-300">({items.length})</span>
-            </h2>
-            <div className="space-y-2">
-              {items.map((task) => (
-                <TaskRow key={task.id} task={task} categories={categories} />
-              ))}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <div className="space-y-6">
+          {openTasks.length === 0 && doneTasks.length === 0 && (
+            <div className="text-center py-16 text-gray-400">
+              {hasActiveFilter ? (
+                <p className="text-sm">No tasks match your filters.</p>
+              ) : (
+                <>
+                  <p className="text-lg font-medium">All clear!</p>
+                  <p className="text-sm mt-1">
+                    No open tasks. Press N or click &ldquo;+ New Task&rdquo; to add one.
+                  </p>
+                </>
+              )}
             </div>
-          </section>
-        ))}
+          )}
 
-        {doneTasks.length > 0 && (
-          <div className="border-t border-gray-200 pt-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-              {STATUS_LABELS[Status.DONE]}{' '}
-              <span className="ml-1 text-gray-300">({doneTasks.length})</span>
-            </h2>
-            <div className="space-y-2 opacity-50">
-              {doneTasks.map((task) => (
-                <TaskRow key={task.id} task={task} categories={categories} />
-              ))}
+          {openTasks.length === 0 && doneTasks.length > 0 && (
+            <div className="text-center py-8 text-gray-400">
+              <p className="text-lg font-medium">All clear!</p>
+              <p className="text-sm mt-1">No open tasks.</p>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+
+          {groups.map(({ status, label, items }) => (
+            <section key={status}>
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                {label} <span className="ml-1 text-gray-300">({items.length})</span>
+              </h2>
+              <SortableContext
+                items={items.map((t) => t.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-2">
+                  {items.map((task) => (
+                    <SortableTaskRow key={task.id} task={task} categories={categories} />
+                  ))}
+                </div>
+              </SortableContext>
+            </section>
+          ))}
+
+          {doneTasks.length > 0 && (
+            <div className="border-t border-gray-200 pt-4">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                {STATUS_LABELS[Status.DONE]}{' '}
+                <span className="ml-1 text-gray-300">({doneTasks.length})</span>
+              </h2>
+              <div className="space-y-2 opacity-50">
+                {doneTasks.map((task) => (
+                  <SortableTaskRow key={task.id} task={task} categories={categories} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </DndContext>
     </div>
   )
 }
