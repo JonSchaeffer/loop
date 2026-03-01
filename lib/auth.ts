@@ -1,16 +1,11 @@
-import NextAuth, { type DefaultSession } from 'next-auth'
+import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
+import { authConfig } from '@/auth.config'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 
-// Extend the built-in session type to include user.id
-declare module 'next-auth' {
-  interface Session {
-    user: { id: string } & DefaultSession['user']
-  }
-}
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     Credentials({
       credentials: {
@@ -37,18 +32,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    jwt({ token, user }) {
-      if (user?.id) token.id = user.id
-      return token
-    },
-    session({ session, token }) {
-      if (token.id) session.user.id = token.id as string
-      return session
-    },
-  },
-  session: { strategy: 'jwt' },
-  pages: {
-    signIn: '/login',
-  },
 })
