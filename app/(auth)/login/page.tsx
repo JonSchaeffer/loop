@@ -1,6 +1,7 @@
 import { signIn } from '@/lib/auth'
 import { AuthError } from 'next-auth'
 import { redirect } from 'next/navigation'
+import { isRateLimited, recordFailedAttempt } from '@/lib/rate-limit'
 
 export default async function LoginPage({
   searchParams,
@@ -21,6 +22,12 @@ export default async function LoginPage({
           className="space-y-4 bg-white p-8 rounded-xl shadow-sm border border-gray-200"
           action={async (formData: FormData) => {
             'use server'
+            const email = ((formData.get('email') as string) ?? '').toLowerCase()
+
+            if (isRateLimited(email)) {
+              redirect('/login?error=ratelimit')
+            }
+
             try {
               await signIn('credentials', {
                 email: formData.get('email'),
@@ -29,12 +36,21 @@ export default async function LoginPage({
               })
             } catch (err) {
               if (err instanceof AuthError) {
+                recordFailedAttempt(email)
+                if (isRateLimited(email)) {
+                  redirect('/login?error=ratelimit')
+                }
                 redirect(`/login?error=invalid`)
               }
               throw err
             }
           }}
         >
+          {error === 'ratelimit' && (
+            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
+              Too many failed attempts. Please wait 60 seconds before trying again.
+            </p>
+          )}
           {error === 'invalid' && (
             <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">
               Invalid email or password.

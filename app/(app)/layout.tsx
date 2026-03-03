@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button'
 import { KeyboardShortcutsModal } from '@/components/keyboard-shortcuts-modal'
 import { QuickAddTask } from '@/components/quick-add-task'
 import { prisma } from '@/lib/db'
+import { isAdmin } from '@/lib/admin'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
+  const admin = isAdmin(session.user.email ?? '')
 
   const categories = await prisma.category.findMany({
     where: { userId: session.user.id },
@@ -43,6 +45,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </nav>
           </div>
           <div className="flex items-center gap-1">
+            {admin && (
+              <Link
+                href="/admin/users"
+                className="px-3 py-1.5 rounded-md text-sm font-medium text-gray-400 hover:bg-gray-100 transition-colors"
+              >
+                Admin
+              </Link>
+            )}
             <Link
               href="/settings"
               className="px-3 py-1.5 rounded-md text-sm font-medium text-gray-400 hover:bg-gray-100 transition-colors"
