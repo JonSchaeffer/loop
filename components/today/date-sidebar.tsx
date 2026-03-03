@@ -1,13 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { format, isToday, isYesterday, addDays, subDays } from 'date-fns'
+import { format, isToday, isYesterday, addDays, subDays, parseISO } from 'date-fns'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
 interface DateSidebarProps {
   dates: Date[]
-  selectedDate: Date
+  dateParam?: string
 }
 
 function dateLabel(date: Date) {
@@ -20,10 +20,17 @@ function toParam(date: Date) {
   return format(date, 'yyyy-MM-dd')
 }
 
-export function DateSidebar({ dates, selectedDate }: DateSidebarProps) {
+export function DateSidebar({ dates, dateParam }: DateSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const selectedParam = toParam(selectedDate)
+
+  // Derive selectedParam from the URL string directly — avoids a server→client
+  // Date serialization bug where parseISO('YYYY-MM-DD') on the UTC server gives
+  // midnight UTC, which formats to the previous calendar day in negative-offset timezones.
+  const selectedParam = dateParam ?? format(new Date(), 'yyyy-MM-dd')
+
+  // For keyboard nav we need a Date, but parse it client-side so it's in local time.
+  const selectedDate = dateParam ? parseISO(dateParam) : new Date()
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

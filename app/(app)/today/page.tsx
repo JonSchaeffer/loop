@@ -107,7 +107,7 @@ export default async function TodayPage({
 
   return (
     <div className="flex gap-6">
-      <DateSidebar dates={sidebarDates} selectedDate={viewDate} />
+      <DateSidebar dates={sidebarDates} dateParam={dateParam} />
 
       <div className="flex-1 min-w-0 space-y-4">
         <div className="flex items-start justify-between">
