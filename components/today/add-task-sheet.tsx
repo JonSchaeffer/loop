@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { CategorySelect } from './category-select'
+import { toast } from 'sonner'
 
 interface AddTaskSheetProps {
   categories: Category[]
@@ -21,6 +22,7 @@ const EMPTY_FORM = {
   priority: 'MEDIUM' as Priority,
   sentDate: '',
   followUpDate: '',
+  dueDate: '',
   notes: '',
 }
 
@@ -32,6 +34,15 @@ export function AddTaskSheet({ categories }: AddTaskSheetProps) {
 
   const set = (field: keyof typeof EMPTY_FORM) => (value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }))
+
+  const isDirty = form.title.trim() !== '' || form.recipient !== '' || form.notes !== ''
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next && isDirty && !isPending) {
+      if (!confirm('Discard this new task?')) return
+    }
+    setOpen(next)
+  }
 
   const handleOpen = useCallback(() => {
     setForm({ ...EMPTY_FORM, sentDate: new Date().toISOString().split('T')[0] })
@@ -46,12 +57,11 @@ export function AddTaskSheet({ categories }: AddTaskSheetProps) {
         !open &&
         !['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)
       ) {
-        e.preventDefault()
         handleOpen()
       }
     }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    window.addEventListener('keyup', handler)
+    return () => window.removeEventListener('keyup', handler)
   }, [open, handleOpen])
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -59,21 +69,27 @@ export function AddTaskSheet({ categories }: AddTaskSheetProps) {
     if (!form.title.trim()) return
 
     startTransition(async () => {
-      await createTask({
-        title: form.title.trim(),
-        recipient: form.recipient.trim() || undefined,
-        categoryId: form.categoryId || undefined,
-        priority: form.priority,
-        sentDate: form.sentDate ? new Date(form.sentDate) : null,
-        followUpDate: form.followUpDate ? new Date(form.followUpDate) : null,
-        notes: form.notes.trim() || undefined,
-      })
-      setOpen(false)
+      try {
+        await createTask({
+          title: form.title.trim(),
+          recipient: form.recipient.trim() || undefined,
+          categoryId: form.categoryId || undefined,
+          priority: form.priority,
+          sentDate: form.sentDate ? new Date(form.sentDate) : null,
+          followUpDate: form.followUpDate ? new Date(form.followUpDate) : null,
+          dueDate: form.dueDate ? new Date(form.dueDate) : null,
+          notes: form.notes.trim() || undefined,
+        })
+        setOpen(false)
+        toast.success('Task added.')
+      } catch {
+        toast.error('Failed to add task. Please try again.')
+      }
     })
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <Button onClick={handleOpen} size="sm" className="gap-1">
           <span aria-hidden>+</span> New Task
@@ -85,7 +101,7 @@ export function AddTaskSheet({ categories }: AddTaskSheetProps) {
           <SheetTitle>New Task</SheetTitle>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4 px-4 pb-4">
           {/* Title */}
           <div className="space-y-1.5">
             <Label htmlFor="title">
@@ -141,7 +157,7 @@ export function AddTaskSheet({ categories }: AddTaskSheetProps) {
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="sentDate">Date Sent</Label>
               <Input
@@ -152,12 +168,21 @@ export function AddTaskSheet({ categories }: AddTaskSheetProps) {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="followUpDate">Follow-up Date</Label>
+              <Label htmlFor="followUpDate">Remind me on</Label>
               <Input
                 id="followUpDate"
                 type="date"
                 value={form.followUpDate}
                 onChange={(e) => set('followUpDate')(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="dueDate">Due Date</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={form.dueDate}
+                onChange={(e) => set('dueDate')(e.target.value)}
               />
             </div>
           </div>
@@ -181,7 +206,7 @@ export function AddTaskSheet({ categories }: AddTaskSheetProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={isPending}
             >
               Cancel

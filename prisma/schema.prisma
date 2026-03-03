@@ -40,7 +40,8 @@ model Task {
   status       Status    @default(WAITING)
 
   sentDate     DateTime? // when the original email was sent
-  followUpDate DateTime? // scheduled date for the next follow-up
+  followUpDate DateTime? // "remind me on" — drives FOLLOW_UP_DUE / OVERDUE status
+  dueDate      DateTime? // hard deadline
   completedAt  DateTime? // when marked DONE
 
   notes        String?
@@ -52,6 +53,7 @@ model Task {
   subTasks      SubTask[]
   followUps     FollowUp[]
   statusHistory StatusEvent[]
+  responseLogs  ResponseLog[]
 }
 
 model SubTask {
@@ -61,6 +63,14 @@ model SubTask {
   title     String
   done      Boolean  @default(false)
   sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model ResponseLog {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  content   String
   createdAt DateTime @default(now())
 }
 

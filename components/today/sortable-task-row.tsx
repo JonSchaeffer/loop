@@ -2,10 +2,14 @@
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { type Task, type Category, type SubTask } from '@prisma/client'
+import { type Task, type Category, type SubTask, type ResponseLog } from '@prisma/client'
 import { TaskRow } from './task-row'
 
-type TaskWithDetails = Task & { category: Category | null; subTasks: SubTask[] }
+type TaskWithDetails = Task & {
+  category: Category | null
+  subTasks: SubTask[]
+  responseLogs: ResponseLog[]
+}
 
 interface SortableTaskRowProps {
   task: TaskWithDetails

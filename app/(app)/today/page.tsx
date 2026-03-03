@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { format, startOfDay, endOfDay, subDays, isToday, parseISO } from 'date-fns'
 import { TaskList } from '@/components/today/task-list'
 import { AddTaskSheet } from '@/components/today/add-task-sheet'
+import { AddCategoryDialog } from '@/components/today/add-category-dialog'
 import { DateSidebar } from '@/components/today/date-sidebar'
 import { Status } from '@prisma/client'
 
@@ -67,7 +68,11 @@ export default async function TodayPage({
               { status: Status.DONE, completedAt: { gte: dayStart } },
             ],
           },
-          include: { category: true, subTasks: { orderBy: { sortOrder: 'asc' } } },
+          include: {
+            category: true,
+            subTasks: { orderBy: { sortOrder: 'asc' } },
+            responseLogs: { orderBy: { createdAt: 'desc' } },
+          },
         })
       : // Historical: tasks that existed and were not yet completed as of that date
         prisma.task.findMany({
@@ -76,7 +81,11 @@ export default async function TodayPage({
             createdAt: { lte: dayEnd },
             OR: [{ completedAt: null }, { completedAt: { gte: dayStart } }],
           },
-          include: { category: true, subTasks: { orderBy: { sortOrder: 'asc' } } },
+          include: {
+            category: true,
+            subTasks: { orderBy: { sortOrder: 'asc' } },
+            responseLogs: { orderBy: { createdAt: 'desc' } },
+          },
         }),
     prisma.category.findMany({
       where: { userId },
@@ -110,7 +119,12 @@ export default async function TodayPage({
               {viewingToday ? format(new Date(), 'EEEE, MMMM d, yyyy') : format(viewDate, 'EEEE')}
             </p>
           </div>
-          {viewingToday && <AddTaskSheet categories={categories} />}
+          {viewingToday && (
+            <div className="flex items-center gap-2">
+              <AddCategoryDialog />
+              <AddTaskSheet categories={categories} />
+            </div>
+          )}
         </div>
 
         <TaskList tasks={sorted} categories={categories} readonly={!viewingToday} />

@@ -2,7 +2,9 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 
 function createPrismaClient() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL })
+  // max: 1 keeps serverless functions (Vercel) from exhausting DB connections.
+  // A pooled connection string (e.g. Neon's pooled URL) should be used in production.
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL, max: 1 })
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],

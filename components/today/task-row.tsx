@@ -1,15 +1,28 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { type Task, type Category, type SubTask, Status, Priority } from '@prisma/client'
+import {
+  type Task,
+  type Category,
+  type SubTask,
+  type ResponseLog,
+  Status,
+  Priority,
+} from '@prisma/client'
 import { format, isPast } from 'date-fns'
 import { StatusActions } from './status-actions'
 import { EditTaskSheet } from './edit-task-sheet'
 import { SubTaskList } from './subtask-list'
+import { ResponseLogList } from './response-log-list'
 import { Button } from '@/components/ui/button'
 import { deleteTask } from '@/actions/tasks'
+import { toast } from 'sonner'
 
-type TaskWithDetails = Task & { category: Category | null; subTasks: SubTask[] }
+type TaskWithDetails = Task & {
+  category: Category | null
+  subTasks: SubTask[]
+  responseLogs: ResponseLog[]
+}
 
 const STATUS_STYLES: Record<Status, string> = {
   OVERDUE: 'border-l-red-400 bg-red-50',
@@ -36,7 +49,12 @@ export function TaskRow({ task, categories }: TaskRowProps) {
   const handleDelete = () => {
     if (!confirm('Delete this task?')) return
     startDeleteTransition(async () => {
-      await deleteTask(task.id)
+      try {
+        await deleteTask(task.id)
+        toast.success('Task deleted.')
+      } catch {
+        toast.error('Failed to delete task.')
+      }
     })
   }
   const isOverdueDate =
@@ -67,11 +85,16 @@ export function TaskRow({ task, categories }: TaskRowProps) {
                 {task.recipient && (
                   <span className="text-xs text-gray-500 truncate">To: {task.recipient}</span>
                 )}
+                {task.dueDate && (
+                  <span className="text-xs text-gray-700 font-medium">
+                    Due: {format(task.dueDate, 'MMM d')}
+                  </span>
+                )}
                 {task.followUpDate && (
                   <span
                     className={`text-xs ${isOverdueDate ? 'text-red-600 font-medium' : 'text-gray-500'}`}
                   >
-                    Follow-up: {format(task.followUpDate, 'MMM d')}
+                    Remind: {format(task.followUpDate, 'MMM d')}
                     {isOverdueDate && ' (overdue)'}
                   </span>
                 )}
@@ -86,6 +109,7 @@ export function TaskRow({ task, categories }: TaskRowProps) {
                 <p className="text-xs text-gray-400 mt-1 line-clamp-1">{task.notes}</p>
               )}
               <SubTaskList taskId={task.id} subTasks={task.subTasks} compact />
+              <ResponseLogList taskId={task.id} logs={task.responseLogs} />
             </div>
           </div>
 

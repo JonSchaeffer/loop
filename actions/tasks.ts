@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { Status, Priority } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
+import { addDays } from 'date-fns'
 
 async function requireUserId() {
   const session = await auth()
@@ -18,6 +19,7 @@ export async function createTask(data: {
   priority: Priority
   sentDate?: Date | null
   followUpDate?: Date | null
+  dueDate?: Date | null
   notes?: string
 }) {
   const userId = await requireUserId()
@@ -80,6 +82,7 @@ export async function updateTask(
     priority: Priority
     sentDate?: Date | null
     followUpDate?: Date | null
+    dueDate?: Date | null
     notes?: string
   }
 ) {
@@ -123,5 +126,19 @@ export async function deleteTask(taskId: string) {
   if (!task || task.userId !== userId) throw new Error('Not found')
 
   await prisma.task.delete({ where: { id: taskId } })
+  revalidatePath('/today')
+}
+
+export async function snoozeTask(taskId: string, days: number) {
+  const userId = await requireUserId()
+
+  const task = await prisma.task.findUnique({ where: { id: taskId } })
+  if (!task || task.userId !== userId) throw new Error('Not found')
+
+  await prisma.task.update({
+    where: { id: taskId },
+    data: { followUpDate: addDays(new Date(), days), status: Status.WAITING },
+  })
+
   revalidatePath('/today')
 }

@@ -1,7 +1,14 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
-import { type Task, type Category, type SubTask, Status, Priority } from '@prisma/client'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import {
+  type Task,
+  type Category,
+  type SubTask,
+  type ResponseLog,
+  Status,
+  Priority,
+} from '@prisma/client'
 import {
   DndContext,
   closestCenter,
@@ -15,7 +22,11 @@ import { SortableTaskRow } from './sortable-task-row'
 import { Input } from '@/components/ui/input'
 import { reorderTasks } from '@/actions/tasks'
 
-type TaskWithDetails = Task & { category: Category | null; subTasks: SubTask[] }
+type TaskWithDetails = Task & {
+  category: Category | null
+  subTasks: SubTask[]
+  responseLogs: ResponseLog[]
+}
 
 const STATUS_LABELS: Record<Status, string> = {
   OVERDUE: 'Overdue',
@@ -49,6 +60,22 @@ export function TaskList({ tasks: initialTasks, categories, readonly = false }: 
   const [filterCategory, setFilterCategory] = useState('')
   const [filterPriority, setFilterPriority] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (readonly) return
+    const handler = (e: KeyboardEvent) => {
+      if (
+        e.key === '/' &&
+        !['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)
+      ) {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [readonly])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -98,6 +125,7 @@ export function TaskList({ tasks: initialTasks, categories, readonly = false }: 
       {!readonly && (
         <div className="flex flex-wrap gap-2">
           <Input
+            ref={searchRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tasks…"

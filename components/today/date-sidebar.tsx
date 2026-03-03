@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { format, isToday, isYesterday } from 'date-fns'
-import { usePathname } from 'next/navigation'
+import { format, isToday, isYesterday, addDays, subDays } from 'date-fns'
+import { usePathname, useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 interface DateSidebarProps {
   dates: Date[]
@@ -21,7 +22,26 @@ function toParam(date: Date) {
 
 export function DateSidebar({ dates, selectedDate }: DateSidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const selectedParam = toParam(selectedDate)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) return
+      if (e.key === '[') {
+        // Go back one day
+        const prev = subDays(selectedDate, 1)
+        router.push(`${pathname}?date=${toParam(prev)}`)
+      } else if (e.key === ']') {
+        // Go forward one day, but not past today
+        if (isToday(selectedDate)) return
+        const next = addDays(selectedDate, 1)
+        router.push(isToday(next) ? pathname : `${pathname}?date=${toParam(next)}`)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [selectedDate, pathname, router])
 
   return (
     <nav className="w-36 shrink-0">

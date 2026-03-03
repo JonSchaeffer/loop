@@ -19,6 +19,13 @@ COPY --from=deps /app/node_modules ./node_modules
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
+# ---- migrator stage: runs prisma migrate deploy as a k8s init container ----
+FROM base AS migrator
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY prisma ./prisma
+CMD ["npx", "prisma", "migrate", "deploy"]
+
 # ---- builder stage: production build ----
 FROM base AS builder
 WORKDIR /app

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { type Task, type Category, type SubTask, Priority } from '@prisma/client'
+import { type Task, type Category, type SubTask, type ResponseLog, Priority } from '@prisma/client'
 import { updateTask } from '@/actions/tasks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -10,9 +10,14 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { CategorySelect } from './category-select'
 import { SubTaskList } from './subtask-list'
+import { toast } from 'sonner'
 import { format } from 'date-fns'
 
-type TaskWithDetails = Task & { category: Category | null; subTasks: SubTask[] }
+type TaskWithDetails = Task & {
+  category: Category | null
+  subTasks: SubTask[]
+  responseLogs: ResponseLog[]
+}
 
 interface EditTaskSheetProps {
   task: TaskWithDetails
@@ -26,50 +31,69 @@ function toDateInputValue(date: Date | null): string {
   return format(date, 'yyyy-MM-dd')
 }
 
-export function EditTaskSheet({ task, categories, open, onOpenChange }: EditTaskSheetProps) {
-  const [isPending, startTransition] = useTransition()
-
-  // Re-sync form when task prop changes (e.g. after a save)
-  const [form, setForm] = useState({
+function makeInitial(task: TaskWithDetails) {
+  return {
     title: task.title,
     recipient: task.recipient ?? '',
     categoryId: task.categoryId ?? '',
     priority: task.priority,
     sentDate: toDateInputValue(task.sentDate),
     followUpDate: toDateInputValue(task.followUpDate),
+    dueDate: toDateInputValue(task.dueDate),
     notes: task.notes ?? '',
-  })
+  }
+}
+
+export function EditTaskSheet({ task, categories, open, onOpenChange }: EditTaskSheetProps) {
+  const [isPending, startTransition] = useTransition()
+
+  const [form, setForm] = useState(() => makeInitial(task))
   const [localCategories, setLocalCategories] = useState(categories)
+
+  const isDirty = JSON.stringify(form) !== JSON.stringify(makeInitial(task))
 
   const set = (field: keyof typeof form) => (value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }))
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next && isDirty && !isPending) {
+      if (!confirm('You have unsaved changes. Discard them?')) return
+    }
+    onOpenChange(next)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title.trim()) return
 
     startTransition(async () => {
-      await updateTask(task.id, {
-        title: form.title.trim(),
-        recipient: form.recipient.trim() || undefined,
-        categoryId: form.categoryId || undefined,
-        priority: form.priority as Priority,
-        sentDate: form.sentDate ? new Date(form.sentDate) : null,
-        followUpDate: form.followUpDate ? new Date(form.followUpDate) : null,
-        notes: form.notes.trim() || undefined,
-      })
-      onOpenChange(false)
+      try {
+        await updateTask(task.id, {
+          title: form.title.trim(),
+          recipient: form.recipient.trim() || undefined,
+          categoryId: form.categoryId || undefined,
+          priority: form.priority as Priority,
+          sentDate: form.sentDate ? new Date(form.sentDate) : null,
+          followUpDate: form.followUpDate ? new Date(form.followUpDate) : null,
+          dueDate: form.dueDate ? new Date(form.dueDate) : null,
+          notes: form.notes.trim() || undefined,
+        })
+        onOpenChange(false)
+        toast.success('Task saved.')
+      } catch {
+        toast.error('Failed to save task. Please try again.')
+      }
     })
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Edit Task</SheetTitle>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4 px-4 pb-4">
           <div className="space-y-1.5">
             <Label htmlFor="edit-title">
               Subject / Task <span className="text-red-500">*</span>
@@ -119,7 +143,7 @@ export function EditTaskSheet({ task, categories, open, onOpenChange }: EditTask
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="edit-sentDate">Date Sent</Label>
               <Input
@@ -130,12 +154,21 @@ export function EditTaskSheet({ task, categories, open, onOpenChange }: EditTask
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="edit-followUpDate">Follow-up Date</Label>
+              <Label htmlFor="edit-followUpDate">Remind me on</Label>
               <Input
                 id="edit-followUpDate"
                 type="date"
                 value={form.followUpDate}
                 onChange={(e) => set('followUpDate')(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-dueDate">Due Date</Label>
+              <Input
+                id="edit-dueDate"
+                type="date"
+                value={form.dueDate}
+                onChange={(e) => set('dueDate')(e.target.value)}
               />
             </div>
           </div>
@@ -164,7 +197,7 @@ export function EditTaskSheet({ task, categories, open, onOpenChange }: EditTask
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
               disabled={isPending}
             >
               Cancel

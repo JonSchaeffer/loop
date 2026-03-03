@@ -1,4 +1,4 @@
-# EA Task Tracker — Project Plan
+# Loop — Project Plan
 
 ## Overview
 
@@ -12,130 +12,29 @@ A web app for an executive assistant to track email follow-ups and tasks. Replac
 - Eliminate manual task rollover (undone tasks auto-carry to the next day)
 - Replace manual cut/paste prioritization with drag-to-reorder or priority flags
 - Provide a filterable dashboard showing volume of work over time
-- Surface time-to-complete per task in reporting — highlights which categories of work are most involved and identifies workflow streamlining opportunities
-
----
-
-## Feature Set
-
-### Today View (primary screen)
-
-- Lists all active/in-progress tasks for the current day
-- Tasks not marked `Done` by end of day automatically appear again the next day
-- Color-coded by status and priority
-- Drag-to-reorder for manual priority adjustment
-- One-click status transitions
-
-### Task Entry (quick add)
-
-- Modal/slide-over form to minimize context switching
-- Fields: recipient, subject/description, category, sent date, follow-up due date, priority, notes
-- Keyboard shortcut to open (`N` for new task)
-
-### Categories (user-managed)
-
-- Categories are created and managed by the user from within the app (not hardcoded)
-- Each category has a name and a color (color picker)
-- Used for filtering, dashboard breakdowns, and visual grouping in the Today view
-- A "+" button next to the category dropdown in the task creation slide-over exposes an inline panel to add/edit/delete categories — no context switch to a separate settings screen
-
-### Follow-up Logging
-
-- A task can have multiple follow-up attempts (2–3 is common)
-- Each follow-up is logged with a timestamp and optional notes
-- Follow-up history is visible on the task detail view
-- The initial `followUpDate` on the task is the _scheduled_ due date; each `FollowUp` record is an _actual_ follow-up that happened
-
-### Task Statuses
-
-```
-Waiting → Follow-up Due → Done
-                       ↘ Overdue (auto, when follow-up date passes without resolution)
-```
-
-### Dashboard / Reporting
-
-- Filterable by day / week / month
-- Metrics:
-  - Tasks created vs. completed
-  - Tasks by status
-  - Tasks by category
-  - **Time to complete** — average time from `createdAt` to `completedAt`, viewable by category (surfaces which work types are most demanding)
-  - Follow-up count distribution (how many tasks needed 1, 2, 3+ follow-ups)
-- Useful for showing leadership workload over time
-
-### Auth
-
-- Simple email + password login via Auth.js
-- Single user to start (can expand later)
+- Surface time-to-complete per task in reporting — highlights which categories of work are most involved
 
 ---
 
 ## Tech Stack
 
-| Layer                  | Choice                         | Rationale                                                                            |
-| ---------------------- | ------------------------------ | ------------------------------------------------------------------------------------ |
-| Framework              | Next.js 14 (App Router)        | Full-stack React, server components + server actions, no separate API service needed |
-| Auth                   | Auth.js (NextAuth v5)          | Runs inside Next.js, email+password, no external auth service                        |
-| ORM                    | Prisma                         | Type-safe DB access, good migration tooling                                          |
-| Database               | PostgreSQL                     | Reliable, self-hosted in k8s                                                         |
-| UI Components          | shadcn/ui + Tailwind CSS       | Polished components (tables, modals, drag handles), fast to build with               |
-| Drag-to-reorder        | dnd-kit                        | Lightweight, accessible drag-and-drop                                                |
-| Hosting                | Homelab k8s + Tailscale Funnel | Public HTTPS URL, no install required on company machine                             |
-| Local dev              | Docker Compose                 | Next.js + Postgres, hot reload via volume mount — no k8s deploy needed for iteration |
-| Unit/integration tests | Vitest + React Testing Library | Fast, native ESM, works well with Next.js App Router                                 |
-| E2E tests              | Playwright                     | Browser automation for critical user flows                                           |
-| Linting                | ESLint + Prettier              | Comes with Next.js scaffold; Prettier for consistent formatting                      |
-| Pre-commit             | Husky + lint-staged            | Runs lint + type-check before every commit, keeps the repo clean                     |
+| Layer                  | Choice                                  | Rationale                                                                            |
+| ---------------------- | --------------------------------------- | ------------------------------------------------------------------------------------ |
+| Framework              | Next.js 16 (App Router)                 | Full-stack React, server components + server actions, no separate API service needed |
+| Auth                   | Auth.js (NextAuth v5)                   | Runs inside Next.js, email+password, no external auth service                        |
+| ORM                    | Prisma 7 (`@prisma/adapter-pg`)         | Type-safe DB access, good migration tooling, driver adapter for serverless           |
+| Database               | Neon (hosted PostgreSQL)                | Serverless-friendly, Vercel integration, free tier sufficient for single user        |
+| UI Components          | shadcn/ui + Tailwind CSS                | Polished components, fast to build with                                              |
+| Drag-to-reorder        | dnd-kit                                 | Lightweight, accessible drag-and-drop                                                |
+| Hosting                | Vercel                                  | Zero-config Next.js deploy, free hobby tier, automatic preview deploys               |
+| Local dev              | Docker Compose                          | Next.js + Postgres, hot reload via volume mount                                      |
+| Unit/integration tests | Vitest + React Testing Library          | Fast, native ESM                                                                     |
+| E2E tests              | Playwright                              | Browser automation for critical user flows                                           |
+| Linting                | ESLint + Prettier + Husky + lint-staged | Runs lint + type-check before every commit                                           |
 
 ---
 
-## Architecture
-
-```
-[Browser - Company Computer]
-        |
-        | HTTPS (Tailscale Funnel public URL)
-        ↓
-[Tailscale Funnel]
-        |
-        | routes to homelab
-        ↓
-[k8s Ingress / Tailscale Operator]
-        |
-        ↓
-[Next.js Pod]  ←——→  [PostgreSQL Pod]
-  - App Router              - PersistentVolumeClaim
-  - Server Components         for data durability
-  - Server Actions
-  - Auth.js sessions
-```
-
-### Request flow
-
-1. User navigates to the Tailscale Funnel URL in their work browser
-2. Tailscale routes the request into the homelab cluster
-3. k8s ingress (or Tailscale operator) forwards to the Next.js pod
-4. Next.js checks auth session (JWT stored in cookie)
-5. Server Components fetch data directly from Postgres via Prisma (no REST layer)
-6. Mutations (create task, update status, reorder) go through Server Actions — no separate API endpoints needed
-7. Postgres data lives on a PVC in the cluster — VPS migration path: `pg_dump` / `pg_restore` or a CSV export/import, then point `DATABASE_URL` at the new host
-
-### k8s Resources
-
-- `Deployment`: next-app (1 replica to start)
-- `StatefulSet` or `Deployment` + PVC: postgres
-- `PersistentVolumeClaim`: postgres-data
-- `Service` (ClusterIP): next-app, postgres
-- Tailscale operator or Funnel config for external ingress
-
-### Why Server Actions over a REST API
-
-For a single-user CRUD app, Server Actions remove the need for a separate API layer. Mutations are co-located with the UI, fully type-safe end-to-end via Prisma, and reduce boilerplate significantly. If the app ever needs a public API (e.g., for a mobile client or integrations), REST routes can be added later.
-
----
-
-## Data Model
+## Data Model (current)
 
 ```prisma
 model User {
@@ -147,48 +46,68 @@ model User {
   categories   Category[]
 }
 
-// User-managed — created/edited/deleted from the app settings screen
 model Category {
   id        String   @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
-  color     String   // hex color, e.g. "#4f46e5"
+  color     String
   createdAt DateTime @default(now())
   tasks     Task[]
+  @@unique([userId, name])
 }
 
 model Task {
   id           String    @id @default(cuid())
   userId       String
-  user         User      @relation(fields: [userId], references: [id])
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   categoryId   String?
-  category     Category? @relation(fields: [categoryId], references: [id])
+  category     Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  title        String    // email subject / task description
-  recipient    String?   // who the email was sent to
+  title        String
+  recipient    String?
   priority     Priority  @default(MEDIUM)
   status       Status    @default(WAITING)
 
-  sentDate     DateTime? // when the original email was sent
-  followUpDate DateTime? // scheduled date for first/next follow-up
-  completedAt  DateTime? // when marked Done
+  sentDate     DateTime?  // when email was sent
+  followUpDate DateTime?  // "remind me on" — drives status machine
+  dueDate      DateTime?  // hard deadline
+  completedAt  DateTime?
 
   notes        String?
-  sortOrder    Int       @default(0) // for drag-to-reorder
+  sortOrder    Int       @default(0)
 
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
+  subTasks      SubTask[]
   followUps     FollowUp[]
   statusHistory StatusEvent[]
+  responseLogs  ResponseLog[]
 }
 
-// Each row = one actual follow-up attempt made by the assistant
+model SubTask {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title     String
+  done      Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model ResponseLog {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+}
+
 model FollowUp {
   id           String   @id @default(cuid())
   taskId       String
-  task         Task     @relation(fields: [taskId], references: [id])
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   followedUpAt DateTime @default(now())
   notes        String?
 }
@@ -196,27 +115,26 @@ model FollowUp {
 model StatusEvent {
   id         String   @id @default(cuid())
   taskId     String
-  task       Task     @relation(fields: [taskId], references: [id])
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   fromStatus Status?
   toStatus   Status
   changedAt  DateTime @default(now())
 }
 
-enum Status {
-  WAITING
-  FOLLOW_UP_DUE
-  OVERDUE
-  DONE
-}
-
-enum Priority {
-  HIGH
-  MEDIUM
-  LOW
-}
+enum Status { WAITING, FOLLOW_UP_DUE, OVERDUE, DONE }
+enum Priority { HIGH, MEDIUM, LOW }
 ```
 
-> Note: `StatusEvent` is a lightweight audit log. Enables dashboard metrics like "how long did tasks sit before resolution" — useful for reporting without much overhead.
+---
+
+## Status Flow
+
+```
+WAITING → FOLLOW_UP_DUE → DONE
+                        ↘ OVERDUE (auto: followUpDate < today && status != DONE)
+```
+
+Snooze buttons on OVERDUE / FOLLOW_UP_DUE push `followUpDate` forward 24h or 1wk and reset to WAITING.
 
 ---
 
@@ -224,91 +142,102 @@ enum Priority {
 
 ### Phase 1 — Foundation ✅
 
-- [x] Scaffold Next.js project (TypeScript, App Router, Tailwind) — Next.js 16 installed
-- [x] Configure ESLint, Prettier, Husky + lint-staged, TypeScript strict mode
-- [x] Set up Vitest + React Testing Library
-- [x] Set up Playwright for E2E
-- [x] Set up Prisma + PostgreSQL schema (Prisma 7, `prisma-client-js` + `@prisma/adapter-pg`)
+- [x] Scaffold Next.js (TypeScript, App Router, Tailwind)
+- [x] ESLint, Prettier, Husky + lint-staged, TypeScript strict mode
+- [x] Vitest + React Testing Library
+- [x] Playwright E2E
+- [x] Prisma + PostgreSQL schema
 - [x] Auth.js email+password login (JWT sessions, edge-safe middleware split)
-- [x] Docker Compose stack (next-app + postgres, hot reload via volume mount) for local dev
-- [x] Basic k8s manifests (next-app deployment, postgres statefulset, PVC, services)
-- [ ] Tailscale Funnel config (deferred — do when ready to deploy)
+- [x] Docker Compose stack (next-app + postgres, hot reload)
 
 ### Phase 2 — Core Task UI ✅
 
 - [x] Today view — tasks grouped by status (Overdue → Follow-up Due → Waiting)
-- [x] Completed tasks from today shown at bottom, dimmed, separated by divider
-- [x] Quick-add task slide-over (`N` keyboard shortcut, `sentDate` auto-fills to today)
-- [x] Status transition buttons (one-click, client-side with `useTransition`)
-- [x] Auto-rollover logic (non-DONE tasks always surface in Today view)
+- [x] Completed tasks shown at bottom, dimmed, separated by divider
+- [x] Quick-add task slide-over (`N` shortcut, `sentDate` auto-fills to today)
+- [x] Status transition buttons (one-click, `useTransition`)
+- [x] Auto-rollover (non-DONE tasks always surface in Today view)
 - [x] Auto-overdue detection (on-load `updateMany` for tasks past `followUpDate`)
-- [x] Category badge on task card with inline category creation
+- [x] Category badge + full card color tint
 - [x] Priority dot indicator
 
 ### Phase 3 — Task Management ✅
 
-- [x] Edit existing tasks (slide-over pre-filled with current values)
-- [ ] Task detail view with follow-up log (log follow-up attempts with timestamp + notes)
-- [ ] Subtasks — simple checklist per task; task cannot be marked Done until all subtasks complete
-- [ ] Category color fills full task card background (light tint, replaces badge-only approach)
-- [ ] Category management screen (edit name/color, delete — accessible from nav)
-- [ ] Drag-to-reorder within status groups (dnd-kit)
-- [ ] Search bar (filters Today view by title, recipient, notes)
-- [ ] Filter bar (by category, priority, status)
+- [x] Edit existing tasks (slide-over, pre-filled)
+- [x] Subtasks — checklist per task; task cannot be marked Done until all complete
+- [x] Category management screen (edit name/color, delete)
+- [x] Drag-to-reorder within status groups (dnd-kit)
+- [x] Search bar (filters by title, recipient, notes)
+- [x] Filter bar (by category, priority, status)
+- [x] Response log — inline timestamped notes per task ("Dean replied, confirmed for March 15")
+- [x] Snooze — push follow-up date forward 24h or 1wk, resets to WAITING
+- [x] Due date — hard deadline field separate from "remind me on" date
+- [x] Quick-add NLP — parses "by friday", "follow up on wednesday", "remind me thursday" from free-text entry
 
 ### Phase 4 — History & Dashboard ✅
 
-- [x] Left sidebar with date history — click a past date to view that day's task snapshot
-- [x] Dashboard page with day/week/month filter
+- [x] Left sidebar with date history — click past date to view that day's snapshot
+- [x] Dashboard — day/week/month filter
 - [x] Task volume chart (created vs completed)
 - [x] Status breakdown
 - [x] Breakdown by category
-- [x] Time-to-complete metric, viewable by category
-- [x] Follow-up count distribution (tasks needing 1, 2, 3+ follow-ups)
+- [x] Time-to-complete metric by category
+- [x] Follow-up count distribution
 
-### Phase 5 — Polish
+### Phase 5 — Polish ✅
 
-- [ ] Confirm-on-close if unsaved changes in edit/add forms
-- [ ] Empty states, loading skeletons
-- [ ] Error handling / toast notifications
-- [ ] Keyboard shortcuts reference (e.g. `?` to show shortcuts)
+- [x] Keyboard shortcuts: `N` new task, `C` new category, `Q` quick-add, `/` search
+- [x] Keyboard shortcuts reference modal (`?`)
+- [x] Toast notifications (sonner)
+- [x] Confirm-on-close for unsaved changes in edit form
 
----
+### Phase 6 — Deploy to k3s Homelab 🚧
 
-## Testing Standards
-
-### What to test
-
-| Layer          | Tool                   | What                                                                                |
-| -------------- | ---------------------- | ----------------------------------------------------------------------------------- |
-| Business logic | Vitest                 | Utility functions, status transition rules, overdue detection logic, rollover logic |
-| Server Actions | Vitest + mocked Prisma | Input validation, DB call shape, error paths                                        |
-| UI Components  | React Testing Library  | Key interactions: task creation form, status buttons, drag handles                  |
-| E2E            | Playwright             | Critical flows: login, create task, change status, mark done, dashboard filter      |
-
-### What not to test
-
-- Prisma internals / DB migrations (trust the ORM)
-- shadcn/ui component internals
-- Purely presentational components with no logic
-
-### Coverage target
-
-Aim for coverage on business logic and Server Actions. E2E tests cover the happy path for each major feature. No hard % target — write tests where bugs would be painful, not for vanity metrics.
+- [x] Settings page — change password UI
+- [x] Settings link in nav
+- [x] `scripts/create-user.ts` — CLI script to add accounts without a UI
+- [x] `Dockerfile` migrator stage — lightweight image for `prisma migrate deploy`
+- [x] `.github/workflows/build.yml` — builds + pushes `loop` and `loop-migrate` to GHCR on push to `main`
+- [x] k8s manifests in `k3s-homelab/apps/homelab/loop/`
+  - HelmRelease (app-template): Next.js app + postgres sidecar + init container for migrations
+  - PVC: 5Gi Longhorn volume for postgres data
+  - ExternalSecret: pulls `POSTGRES_PASSWORD` + `AUTH_SECRET` from 1Password item `loop`
+  - Tailscale ingress: `loop.porgy-monitor.ts.net`
+- [ ] **1Password setup** — create `loop` item with fields: `POSTGRES_PASSWORD`, `AUTH_SECRET`
+  - Generate `AUTH_SECRET`: `npx auth secret`
+- [ ] **Push to GitHub** — triggers build workflow, pushes images to GHCR
+- [ ] **Commit homelab manifests** — Flux picks up and deploys
+- [ ] **Create first user** — `npx tsx scripts/create-user.ts <email> <password>`
+- [ ] **Verify** — login at `https://loop.porgy-monitor.ts.net`, change default password
 
 ---
 
-## Git Workflow
+## Multi-User Notes
 
-- **Commit early and often** — prefer small, focused commits over large batches
-- **Commit message format**: `type: short description` (e.g., `feat: add task status transitions`, `fix: overdue detection off-by-one`, `chore: add Playwright config`)
-- **Push after every meaningful chunk of work** — don't let local commits pile up
-- **Branch strategy**: `main` is deployable; feature work on short-lived branches (`feat/today-view`, `feat/dashboard`), merge via PR or direct push for solo work
-- Husky pre-commit hook runs lint + type-check automatically — fix before committing, don't bypass with `--no-verify`
+The data model is **fully multi-user** — every row is scoped to `userId` and all server actions verify ownership. What's missing is account creation UI:
+
+- No public sign-up (intentional — private tool)
+- Accounts created via `scripts/create-user.ts`
+- If a second user is ever needed, run the script with their email/password
 
 ---
 
-## Open Questions
+## Security Posture
 
-- Overdue detection — on-load check (simple, no infra) vs. k8s CronJob (more accurate, runs overnight). On-load is probably fine to start.
-- VPS migration path — Fly.io, Hetzner, or DigitalOcean? Docker Compose makes any of these straightforward.
+- bcrypt (cost 12) for password hashing ✅
+- Auth.js JWT sessions ✅
+- `userId` ownership verified on every server action ✅
+- No public sign-up ✅
+- CSRF protection via Next.js Server Actions ✅
+- SQL injection protection via Prisma ORM ✅
+- Rate limiting on login — **not implemented** (low risk for private tool, add Upstash Redis if needed)
+
+---
+
+## Open Questions / Future Ideas
+
+- NLP date parsing already in quick-add — could extend to the full task form
+- "Sent X days ago, no reply" badge on task cards (based on `sentDate` + response log age)
+- Email reminders / push notifications for overdue tasks
+- Rate limiting on login endpoint (Upstash Redis if traffic warrants it)
+- Mobile-responsive layout (deprioritized — desktop-first tool)
