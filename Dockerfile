@@ -9,9 +9,7 @@ COPY package*.json ./
 # prisma/schema.prisma must be present before npm ci — postinstall runs "prisma generate"
 COPY prisma ./prisma
 # HUSKY=0 prevents husky from running inside Docker (no .git directory)
-# DATABASE_URL is a dummy value — prisma generate (postinstall) validates the env var
-# is present but does not connect to the database during build.
-RUN HUSKY=0 DATABASE_URL="postgresql://localhost/dummy" npm ci
+RUN HUSKY=0 npm ci
 
 # ---- dev stage: used by docker-compose for local development ----
 FROM base AS dev
